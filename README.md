@@ -1,6 +1,7 @@
 # 🎓 Coursera Multimodal Intelligence Platform
 
 [![Production Status](https://img.shields.io/badge/Production-Live%20%26%20Certified-success?style=for-the-badge&logo=vercel)](https://coursera-multimodal-intelligence-pl.vercel.app/)
+[![Demo Video](https://img.shields.io/badge/Demo%20Video-Google%20Drive-FF5722?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1-4rQmYV4VyDYsAzOmbjrTUlKm-JoA3Mg/view?usp=drive_link)
 [![Automated Tests](https://img.shields.io/badge/Tests-97%2F97%20Passed-brightgreen?style=for-the-badge&logo=pytest)](https://github.com/abhik99/Coursera-Multimodal-Intelligence-Platform)
 [![Python Version](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-blue?style=for-the-badge&logo=python)](https://www.python.org/)
 [![React Version](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
@@ -17,10 +18,27 @@ The platform ingests video transcripts (SRT/TXT), HTML readings, assignments, an
 ## 🌐 Live Production Deployment
 
 * **Live Web Application:** [https://coursera-multimodal-intelligence-pl.vercel.app/](https://coursera-multimodal-intelligence-pl.vercel.app/)
+* **Project Demo Video (Walkthrough):** [Watch on Google Drive](https://drive.google.com/file/d/1-4rQmYV4VyDYsAzOmbjrTUlKm-JoA3Mg/view?usp=drive_link)
 * **Backend API Documentation (Swagger):** `/docs` on active backend host
 * **Hosting Infrastructure:** Vercel Global Edge CDN + Supabase Cloud PostgreSQL + Render API Web Service
 
-![Coursera Multimodal Intelligence Platform Live Dashboard](docs/images/dashboard_overview.png)
+[![Coursera Multimodal Intelligence Platform Live Dashboard](docs/images/dashboard_overview.png)](https://drive.google.com/file/d/1-4rQmYV4VyDYsAzOmbjrTUlKm-JoA3Mg/view?usp=drive_link)
+
+---
+
+## 🎥 Project Demo Video
+
+Experience the end-to-end multimodal intelligence platform in action — from raw archive ingestion and dense vector indexing in `pgvector` to real-time pedagogical diagnostics and grounded anti-hallucination conversational AI:
+
+[![Watch Project Demo Video](https://img.shields.io/badge/▶%20Watch%20Demo%20Video-Google%20Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1-4rQmYV4VyDYsAzOmbjrTUlKm-JoA3Mg/view?usp=drive_link)
+
+> 📹 **Google Drive Demo Link:** [https://drive.google.com/file/d/1-4rQmYV4VyDYsAzOmbjrTUlKm-JoA3Mg/view?usp=drive_link](https://drive.google.com/file/d/1-4rQmYV4VyDYsAzOmbjrTUlKm-JoA3Mg/view?usp=drive_link)
+>
+> **Highlighted in the demonstration:**
+> * **Multimodal Asset Ingestion:** Automated parsing of video transcripts (SRT with millisecond sync) and HTML readings with sentence chunking.
+> * **Vector Search & Retrieval:** 384-dimensional dense semantic search using PostgreSQL + `pgvector` HNSW indexes.
+> * **Instructional Telemetry:** Real-time friction detection (replay spikes, concept confusion, quiz drop-offs) and pedagogical remediation plans.
+> * **Conversational AI Assistant:** Evidence-grounded answers powered by Google Gemini with strict `EvidenceValidator` guardrails to prevent hallucinations.
 
 ---
 
@@ -652,6 +670,7 @@ The entire platform can be deployed on a **100% Free Tier Cloud Architecture**:
 
 | Document / Asset | Description | Source / Generator Script |
 | :--- | :--- | :---: |
+| [`Project Demo Video (Google Drive)`](https://drive.google.com/file/d/1-4rQmYV4VyDYsAzOmbjrTUlKm-JoA3Mg/view?usp=drive_link) | End-to-End System Walkthrough & Feature Demo Recording | [Google Drive Video Link](https://drive.google.com/file/d/1-4rQmYV4VyDYsAzOmbjrTUlKm-JoA3Mg/view?usp=drive_link) |
 | [`integration_and_deployment_report.md`](integration_and_deployment_report.md) | Comprehensive Testing, Integration & Deployment Engineering Report | Markdown Source |
 | `Integration & Deployment Report PDF` | Formal PDF Integration & Deployment Sign-off Document | [`scripts/generate_pdf_report.py`](scripts/generate_pdf_report.py) |
 | `Presentation Slide Deck (.pptx)` | Executive Architecture & Delivery Slide Presentation Deck | [`scripts/generate_presentation_pptx.py`](scripts/generate_presentation_pptx.py) |
