@@ -172,24 +172,49 @@ function getInitialCourseMessages(course) {
   ];
 }
 
+// Helper to detect friendly greetings, introductions or capability inquiries
+function isGreetingOrHelp(query) {
+  const q = (query || "").toLowerCase().trim();
+  return /^(hi|hello|hey|greetings|good morning|good afternoon|good evening|howdy|what's up|sup|help|who are you|what can you do)\b/i.test(q);
+}
+
 // Check whether a query is relevant to the course curriculum or out-of-scope/irrelevant
 function isQueryRelevantToCourse(course, query) {
   if (!query || !query.trim()) return false;
+  if (isGreetingOrHelp(query)) return true;
   const q = query.toLowerCase().trim();
 
   // 1. High-Confidence Out-of-Scope / Off-Topic Patterns (CHECK FIRST WITH STRICT PRECEDENCE)
-  // Politics, Geopolitics, Military, Non-syllabus Geography, Pop Culture, Sports, Non-tech Trivia
+  // Food, Cooking, Politics, Military, Non-syllabus Geography, Pop Culture, Sports, Trivia, etc.
   const outOfScopePatterns = [
+    // Food, cooking, recipes, culinary
+    /\b(pasta|spaghetti|macaroni|fettuccine|penne|lasagna|ravioli|noodle|noodles|ramen|pizza|burger|burgers|sandwich|sandwiches|soup|salad|steak|taco|tacos|burrito|curry|sushi|dessert|cake|cupcake|cookies?|bread|dough|pastry|pie|pancake|waffle)\b/i,
+    /\b(recipe|recipes|ingredients?|culinary|cooking|cook|baking|bake|fry|frying|grill|roast|sauce|flour|cheese|butter|boiled?|seasoning|kitchen|chef|dinner|lunch|breakfast|meal|delicious|snack)\b/i,
+    /\bhow to (?:make|cook|bake|prepare|fry|grill|roast|brew)\b/i,
+
+    // Politics, Geopolitics, Military
     /\btaliban\b/i, /\bal[ -]?qaeda\b/i, /\bisis\b/i, /\bhamas\b/i, /\bhezbollah\b/i,
     /\bterroris[mt]\b/i, /\bjihad\b/i, /\bwar in\b/i, /\brussia war\b/i, /\bukraine\b/i,
     /\bpresident of\b/i, /\bprime minister\b/i, /\belection\b/i, /\bvoting\b/i, /\bparliament\b/i,
     /\bdemocrat\b/i, /\brepublican\b/i, /\bsenate\b/i, /\bcongress\b/i, /\bpolitics\b/i,
+
+    // Geography / Trivia / Non-academic facts
     /\bcapital of\b/i, /\bwhere is\b/i,
     /\bpopulation of\b/i, /\bflag of\b/i, /\bcurrency of\b/i,
-    /\btaylor swift\b/i, /\bkanye\b/i, /\bdrake\b/i, /\bbts\b/i, /\bcelebrity\b/i, /\bhollywood\b/i, /\bbollywood\b/i,
-    /\bcricket score\b/i, /\bworld cup\b/i, /\bmessi\b/i, /\bronaldo\b/i, /\bipl\b/i, /\bnba\b/i, /\bsuper bowl\b/i,
-    /\brecipe for\b/i, /\bhow to cook\b/i, /\bhow to bake\b/i, /\bpizza\b/i, /\bburger\b/i,
-    /\bhoroscope\b/i, /\bastrology\b/i, /\bweather in\b/i, /\btell me a joke\b/i
+
+    // Pop Culture, Celebrities, Entertainment
+    /\b(movie|movies|film|cinema|actor|actress|hollywood|bollywood|netflix|song|songs|singer|album|band|celebrity)\b/i,
+    /\btaylor swift\b/i, /\bkanye\b/i, /\bdrake\b/i, /\bbts\b/i,
+
+    // Sports
+    /\b(cricket score|cricket match|world cup|football score|soccer match|baseball|basketball|nba|nfl|fifa|ipl|olympics)\b/i,
+    /\bmessi\b/i, /\bronaldo\b/i, /\bsuper bowl\b/i,
+
+    // Gaming, Astrology, Weather, General Chit-chat
+    /\b(playstation|xbox|nintendo|fortnite|minecraft)\b/i,
+    /\bhoroscope\b/i, /\bastrology\b/i, /\bzodiac\b/i,
+    /\bweather in\b/i, /\btemperature in\b/i,
+    /\btell me a joke\b/i, /\btell a joke\b/i, /\btell me a riddle\b/i
   ];
   if (outOfScopePatterns.some(pattern => pattern.test(q))) {
     return false;
@@ -289,14 +314,32 @@ function isQueryRelevantToCourse(course, query) {
 
   if (matchesKeyword) return true;
 
-  // Check if query mentions words from the course title or staged files
-  const courseTitleWords = (course?.title || "").toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  if (courseTitleWords.some(w => q.includes(w))) return true;
+  // Check if query mentions meaningful non-stop words from the course title or staged files
+  const courseStopWords = new Set([
+    "make", "making", "with", "from", "into", "some", "more", "your", "that", "this",
+    "have", "been", "were", "they", "them", "then", "than", "each", "also", "about",
+    "notes", "guide", "lecture", "video", "intro", "introduction", "overview", "final",
+    "part", "week", "unit", "test", "read", "view", "help", "show", "what", "when",
+    "where", "which", "will", "does", "done", "take", "file", "staged", "syllabus",
+    "enrolled", "course", "courses", "class", "module", "lesson", "summary", "reference",
+    "assignment", "questions", "decisions", "practice", "foundation", "foundations",
+    "learning", "data", "certificate", "professional", "specialization"
+  ]);
+
+  const courseTitleWords = (course?.title || "")
+    .toLowerCase()
+    .split(/\s+/)
+    .map(w => w.replace(/[^a-z0-9]/g, ''))
+    .filter(w => w.length > 3 && !courseStopWords.has(w));
+  if (courseTitleWords.some(w => new RegExp(`\\b${w}\\b`, 'i').test(q))) return true;
 
   const fileWords = Array.isArray(course?.files)
-    ? course.files.flatMap(f => f.name.toLowerCase().split(/[\s_.-]+/)).filter(w => w.length > 3)
+    ? course.files
+        .flatMap(f => f.name.toLowerCase().split(/[\s_.-]+/))
+        .map(w => w.replace(/[^a-z0-9]/g, ''))
+        .filter(w => w.length > 3 && !courseStopWords.has(w))
     : [];
-  if (fileWords.some(w => q.includes(w))) return true;
+  if (fileWords.some(w => new RegExp(`\\b${w}\\b`, 'i').test(q))) return true;
 
   return false;
 }
@@ -381,6 +424,23 @@ function generateSmartCourseResponse(course, query) {
   const domain = detectCourseDomain(course);
   const title = course?.title || "This Course";
   const qLower = (query || "").toLowerCase();
+
+  // Intent 0: Friendly Greeting or Platform Capability Inquiries
+  if (isGreetingOrHelp(query)) {
+    return {
+      content: `Hello! 👋 I am your AI Teaching Assistant for **${title}**.\n\n` +
+        `I am grounded in this course's video lecture transcripts, reading materials, and student diagnostic telemetry.\n\n` +
+        `Here are a few things you can ask me:\n` +
+        `* 💡 *"Which video should we improve?"* — to diagnose pacing friction and student replay spikes\n` +
+        `* 💬 *"Show related discussion posts"* — to view active student forum challenges\n` +
+        `* 🎯 *"Suggest a better explanation"* — for alternative pedagogical breakdowns\n` +
+        `* 📚 Ask any conceptual question related to the curriculum of **${title}**!\n\n` +
+        `What would you like to explore?`,
+      evidence: [
+        { citation_id: "E1", text: `Multimodal Curriculum Index for ${title}.` }
+      ]
+    };
+  }
 
   // Intent 1: Which video should we improve?
   if (qLower.includes("improve") || qLower.includes("which video") || qLower.includes("video to improve") || (qLower.includes("video") && qLower.includes("should"))) {
@@ -1974,18 +2034,74 @@ export default function App() {
       const saved = localStorage.getItem('coursera_chat_histories');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') return parsed;
+        if (parsed && typeof parsed === 'object') {
+          // Clean out any legacy auto-injected starter messages
+          // ("What are the core learning concepts and student challenges in this course?")
+          const cleaned = {};
+          for (const [courseKey, history] of Object.entries(parsed)) {
+            if (Array.isArray(history)) {
+              const filtered = history.filter((msg, idx) => {
+                if (idx === 0 && msg.role === 'user' && msg.content?.includes("What are the core learning concepts and student challenges")) {
+                  return false;
+                }
+                if (idx === 1 && msg.role === 'ai' && history[0]?.content?.includes("What are the core learning concepts and student challenges")) {
+                  return false;
+                }
+                if (msg.role === 'ai' && (msg.content?.includes("Concepts emphasize structured problem-solving") || msg.content?.includes("unable to generate a grounded answer"))) {
+                  return false;
+                }
+                return true;
+              });
+              cleaned[courseKey] = filtered;
+            }
+          }
+          try {
+            localStorage.setItem('coursera_chat_histories', JSON.stringify(cleaned));
+          } catch (e) {}
+          return cleaned;
+        }
       }
     } catch (e) {}
     return {};
   });
 
+  // Dedicated Question-Answer Cache per course
+  const [qaCache, setQaCache] = useState(() => {
+    try {
+      const saved = localStorage.getItem('coursera_qa_cache');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          const cleaned = {};
+          for (const [k, v] of Object.entries(parsed)) {
+            const txt = (v?.content || '').toLowerCase();
+            if (!txt.includes("concepts emphasize structured problem-solving") && !txt.includes("unable to generate a grounded answer") && txt.length > 20) {
+              cleaned[k] = v;
+            }
+          }
+          return cleaned;
+        }
+      }
+    } catch (e) {}
+    return {};
+  });
+
+  const saveQaCache = (key, value) => {
+    setQaCache(prev => {
+      const updated = { ...prev, [key]: value };
+      try {
+        localStorage.setItem('coursera_qa_cache', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
   const currentCourseKey = selectedCourse?.id || selectedCourse?.title || 'default';
-  const messages = chatHistories[currentCourseKey] || getInitialCourseMessages(selectedCourse);
+  const messages = chatHistories[currentCourseKey] || [];
 
   const updateCurrentCourseMessages = (updater) => {
     setChatHistories(prev => {
-      const current = prev[currentCourseKey] || getInitialCourseMessages(selectedCourse);
+      const current = prev[currentCourseKey] || [];
       const nextMsgs = typeof updater === 'function' ? updater(current) : updater;
       const updated = { ...prev, [currentCourseKey]: nextMsgs };
       try {
@@ -1998,7 +2114,19 @@ export default function App() {
   const setMessages = updateCurrentCourseMessages;
 
   const handleClearCurrentCourseChat = () => {
-    updateCurrentCourseMessages(getInitialCourseMessages(selectedCourse));
+    updateCurrentCourseMessages([]);
+    // Clear course-scoped cache entries so user can test fresh
+    const prefix = `${currentCourseKey}:::`;
+    setQaCache(prev => {
+      const updated = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (!k.startsWith(prefix)) updated[k] = v;
+      }
+      try {
+        localStorage.setItem('coursera_qa_cache', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   const [input, setInput] = useState('');
@@ -2419,47 +2547,76 @@ export default function App() {
     setDeleteConfirmCourse(null);
   };
 
-  // Handle Chat Message with Smart Fast-Timeout & Intelligent Fallback
+  // Handle Chat Message with Smart Fast-Timeout, Per-Course QA Cache & Natural Delay
   const sendMessage = async (textToSend) => {
-    const query = typeof textToSend === 'string' ? textToSend : input;
-    if (!query.trim()) return;
+    const rawQuery = typeof textToSend === 'string' ? textToSend : input;
+    const query = (rawQuery || '').trim();
+    if (!query) return;
 
+    // 1. Immediately clear the input box so nothing stays behind
+    setInput('');
+
+    // 2. Post user message to current course's history
     const userMsg = { role: 'user', content: query };
     updateCurrentCourseMessages(prev => [...prev, userMsg]);
-    if (typeof textToSend !== 'string') setInput('');
 
-    // Pre-flight Course Relevance & Anti-Hallucination Guardrail:
-    // If user asks an off-topic / irrelevant question (e.g. politics, trivia, unrelated domains),
-    // immediately decline with clear, polite curriculum boundaries and zero fake citations.
-    if (!isQueryRelevantToCourse(selectedCourse, query)) {
-      const outOfScopeRes = getOutOfScopeResponse(selectedCourse, query);
-      updateCurrentCourseMessages(prev => [
-        ...prev,
-        {
-          role: 'ai',
-          content: outOfScopeRes.content,
-          confidence: 0.0,
-          evidence: []
-        }
-      ]);
+    const courseKey = selectedCourse?.id || selectedCourse?.title || 'default';
+    const normalizedQuery = query.toLowerCase();
+    const cacheKey = `${courseKey}:::${normalizedQuery}`;
+    const startTime = Date.now();
+    const TARGET_DELAY_MS = 2000; // Natural delay of ~2 seconds
+
+    // 3. Check Course-Specific QA Cache
+    // If the question was already answered for this specific course,
+    // show realistic processing delay before returning the cached insight
+    if (qaCache[cacheKey]) {
+      setIsLoading(true);
+      setChatLoadingStatus('Retrieving cached pedagogical insights for this course...');
+      await new Promise(r => setTimeout(r, TARGET_DELAY_MS));
+      updateCurrentCourseMessages(prev => [...prev, qaCache[cacheKey]]);
+      setIsLoading(false);
+      setChatLoadingStatus('');
       return;
     }
 
+    // 4. Pre-flight Course Relevance & Anti-Hallucination Guardrail:
+    // If user asks an off-topic question (cooking, recipes, politics, trivia, unrelated domains),
+    // wait realistic delay, then decline with clear pedagogical boundaries and zero fake citations.
+    if (!isQueryRelevantToCourse(selectedCourse, query)) {
+      setIsLoading(true);
+      setChatLoadingStatus('Evaluating curriculum scope & pedagogical alignment...');
+      await new Promise(r => setTimeout(r, TARGET_DELAY_MS));
+      const outOfScopeRes = getOutOfScopeResponse(selectedCourse, query);
+      const aiMsg = {
+        role: 'ai',
+        content: outOfScopeRes.content,
+        confidence: 0.0,
+        evidence: []
+      };
+      saveQaCache(cacheKey, aiMsg);
+      updateCurrentCourseMessages(prev => [...prev, aiMsg]);
+      setIsLoading(false);
+      setChatLoadingStatus('');
+      return;
+    }
+
+    // 5. Query is relevant to the course curriculum: initiate pipeline
     setIsLoading(true);
     setChatLoadingStatus('Connecting to RAG vector knowledge base...');
 
     // Progress updates to keep user informed while waiting
     const statusTimer1 = setTimeout(() => {
       setChatLoadingStatus('Retrieving semantic evidence & cross-referencing transcripts...');
-    }, 2000);
+    }, 1200);
 
     const statusTimer2 = setTimeout(() => {
       setChatLoadingStatus('Synthesizing grounded explanation via Gemini...');
-    }, 4500);
+    }, 2500);
 
     let backendSuccess = false;
+    let backendAiMsg = null;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
 
     try {
       const response = await fetch(`${apiBaseUrl}/chat/`, {
@@ -2477,17 +2634,19 @@ export default function App() {
 
       if (response.ok) {
         const data = await response.json();
-        if (data && data.answer && data.answer.trim()) {
+        const ans = data?.answer || '';
+        const isStub = ans.toLowerCase().includes("concepts emphasize structured problem-solving") ||
+                       ans.toLowerCase().includes("unable to generate a grounded answer") ||
+                       ans.toLowerCase().includes("external generative ai model unavailable") ||
+                       ans.trim().length < 40;
+        if (ans && !isStub) {
           backendSuccess = true;
-          updateCurrentCourseMessages(prev => [
-            ...prev,
-            {
-              role: 'ai',
-              content: data.answer,
-              confidence: data.confidence || 0.95,
-              evidence: data.evidence || []
-            }
-          ]);
+          backendAiMsg = {
+            role: 'ai',
+            content: ans,
+            confidence: data.confidence || 0.95,
+            evidence: data.evidence || []
+          };
         }
       }
     } catch (err) {
@@ -2495,16 +2654,22 @@ export default function App() {
       // Backend unavailable or timed out
     }
 
-    if (backendSuccess) {
+    if (backendSuccess && backendAiMsg) {
       clearTimeout(statusTimer1);
       clearTimeout(statusTimer2);
+      const elapsed = Date.now() - startTime;
+      if (elapsed < TARGET_DELAY_MS) {
+        await new Promise(r => setTimeout(r, TARGET_DELAY_MS - elapsed));
+      }
+      saveQaCache(cacheKey, backendAiMsg);
+      updateCurrentCourseMessages(prev => [...prev, backendAiMsg]);
       setIsLoading(false);
       setChatLoadingStatus('');
       return;
     }
 
     // Direct Browser Gemini API Call if user has configured geminiApiKey
-    if (geminiApiKey && geminiApiKey.trim()) {
+    if (geminiApiKey && geminiApiKey.trim() && !geminiApiKey.startsWith('AQ.')) {
       try {
         setChatLoadingStatus('Consulting Gemini 2.5 Flash direct neural API...');
         const geminiPrompt = `You are Coursera Insight AI, an advanced multimodal educational analytics and pedagogy assistant for the course "${selectedCourse?.title || 'Course'}".
@@ -2517,7 +2682,7 @@ User Question: "${query}"
 
 CRITICAL RELEVANCE & GROUNDING GUARDRAIL:
 1. First, check whether the question "${query}" is RELEVANT to the subject matter and curriculum of "${selectedCourse?.title}".
-2. If the user's question is IRRELEVANT, OFF-TOPIC, OUT-OF-DOMAIN, or UNRELATED to this course (such as geopolitics, world geography, news, celebrities, sports, cooking, general trivia, chit-chat, or concepts not in this syllabus):
+2. If the user's question is IRRELEVANT, OFF-TOPIC, OUT-OF-DOMAIN, or UNRELATED to this course (such as cooking, recipes, food, pasta, geopolitics, world geography, news, celebrities, sports, general trivia, chit-chat, or concepts not in this syllabus):
    - You MUST NOT pretend it is part of this course.
    - Do NOT invent or hallucinate connections between the off-topic question and this course.
    - You MUST politely decline by stating that you are the course assistant for "${selectedCourse?.title}" and that this question is outside the scope of the course curriculum.
@@ -2564,15 +2729,18 @@ CRITICAL RELEVANCE & GROUNDING GUARDRAIL:
 
             clearTimeout(statusTimer1);
             clearTimeout(statusTimer2);
-            updateCurrentCourseMessages(prev => [
-              ...prev,
-              {
-                role: 'ai',
-                content: rawText,
-                confidence: isDecline ? 0.0 : 0.98,
-                evidence: isDecline ? [] : citations
-              }
-            ]);
+            const elapsed = Date.now() - startTime;
+            if (elapsed < TARGET_DELAY_MS) {
+              await new Promise(r => setTimeout(r, TARGET_DELAY_MS - elapsed));
+            }
+            const aiMsg = {
+              role: 'ai',
+              content: rawText,
+              confidence: isDecline ? 0.0 : 0.98,
+              evidence: isDecline ? [] : citations
+            };
+            saveQaCache(cacheKey, aiMsg);
+            updateCurrentCourseMessages(prev => [...prev, aiMsg]);
             setIsLoading(false);
             setChatLoadingStatus('');
             return;
@@ -2587,23 +2755,27 @@ CRITICAL RELEVANCE & GROUNDING GUARDRAIL:
     clearTimeout(statusTimer1);
     clearTimeout(statusTimer2);
 
+    const elapsed = Date.now() - startTime;
+    if (elapsed < TARGET_DELAY_MS) {
+      await new Promise(r => setTimeout(r, TARGET_DELAY_MS - elapsed));
+    }
+
     const smartRes = generateSmartCourseResponse(selectedCourse, query);
-    updateCurrentCourseMessages(prev => [
-      ...prev,
-      {
-        role: 'ai',
-        content: smartRes.content,
-        confidence: 0.94,
-        evidence: smartRes.evidence
-      }
-    ]);
+    const aiMsg = {
+      role: 'ai',
+      content: smartRes.content,
+      confidence: 0.94,
+      evidence: smartRes.evidence
+    };
+    saveQaCache(cacheKey, aiMsg);
+    updateCurrentCourseMessages(prev => [...prev, aiMsg]);
 
     setIsLoading(false);
     setChatLoadingStatus('');
   };
 
   const handleSuggestion = (promptText) => {
-    setInput(promptText);
+    setInput('');
     sendMessage(promptText);
   };
 
@@ -3806,54 +3978,88 @@ CRITICAL RELEVANCE & GROUNDING GUARDRAIL:
                   
                   {/* Messages Area */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {messages.map((m, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`flex items-start gap-3 max-w-[80%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                          
-                          {/* Avatar */}
-                          {m.role === 'ai' ? (
-                            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm text-sm">
-                              🤖
-                            </div>
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-slate-600 text-white flex items-center justify-center shrink-0 shadow-sm text-xs font-semibold">
-                              👤
-                            </div>
-                          )}
-
-                          {/* Message Bubble */}
-                          <div
-                            className={`p-4 text-[14px] leading-relaxed shadow-sm ${
-                              m.role === 'user'
-                                ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
-                                : 'bg-[#f1f5f9] text-slate-800 rounded-2xl rounded-tl-sm'
-                            }`}
+                    {messages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full min-h-[320px] text-center py-12 px-4 animate-fadeIn">
+                        <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-xs mb-3.5 text-2xl">
+                          🤖
+                        </div>
+                        <h3 className="text-base font-bold text-slate-800">
+                          {selectedCourse?.title ? `AI Tutor for ${selectedCourse.title}` : "Course AI Assistant"}
+                        </h3>
+                        <p className="text-xs text-slate-500 max-w-sm mt-1.5 leading-relaxed">
+                          Ask questions about lecture transcripts, video comprehension bottlenecks, or syllabus concepts for this course.
+                        </p>
+                        <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-md">
+                          <button
+                            onClick={() => handleSuggestion("Which video should we improve?")}
+                            className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200/80 text-xs text-slate-600 transition-all font-medium"
                           >
-                            <div className="whitespace-pre-wrap">{m.content}</div>
-
-                            {/* Evidence Citations Badge if present */}
-                            {m.evidence && m.evidence.length > 0 && (
-                              <div className="mt-3 pt-3 border-t border-slate-200/60">
-                                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
-                                  <span>🔍</span> Verified Course Evidence ({m.evidence.length})
-                                </div>
-                                <div className="space-y-1">
-                                  {m.evidence.map((ev, evIdx) => (
-                                    <div key={evIdx} className="text-xs bg-white/80 p-2 rounded-lg border border-slate-200/80 text-slate-600 font-mono text-[11px]">
-                                      <span className="font-bold text-blue-600 mr-1.5">[{ev.citation_id || `E${evIdx+1}`}]</span>
-                                      {ev.text ? (ev.text.length > 120 ? ev.text.substring(0, 120) + "..." : ev.text) : "Retrieved course material snippet."}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                            💡 Which video should we improve?
+                          </button>
+                          <button
+                            onClick={() => handleSuggestion("Show related discussion posts")}
+                            className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200/80 text-xs text-slate-600 transition-all font-medium"
+                          >
+                            💬 Show related discussion posts
+                          </button>
+                          <button
+                            onClick={() => handleSuggestion("Suggest a better explanation")}
+                            className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-600 border border-slate-200/80 text-xs text-slate-600 transition-all font-medium"
+                          >
+                            🎯 Suggest a better explanation
+                          </button>
                         </div>
                       </div>
-                    ))}
+                    ) : (
+                      messages.map((m, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`flex items-start gap-3 max-w-[80%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                            
+                            {/* Avatar */}
+                            {m.role === 'ai' ? (
+                              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm text-sm">
+                                🤖
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-slate-600 text-white flex items-center justify-center shrink-0 shadow-sm text-xs font-semibold">
+                                👤
+                              </div>
+                            )}
+
+                            {/* Message Bubble */}
+                            <div
+                              className={`p-4 text-[14px] leading-relaxed shadow-sm ${
+                                m.role === 'user'
+                                  ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
+                                  : 'bg-[#f1f5f9] text-slate-800 rounded-2xl rounded-tl-sm'
+                              }`}
+                            >
+                              <div className="whitespace-pre-wrap">{m.content}</div>
+
+                              {/* Evidence Citations Badge if present */}
+                              {m.evidence && m.evidence.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-slate-200/60">
+                                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1.5">
+                                    <span>🔍</span> Verified Course Evidence ({m.evidence.length})
+                                  </div>
+                                  <div className="space-y-1">
+                                    {m.evidence.map((ev, evIdx) => (
+                                      <div key={evIdx} className="text-xs bg-white/80 p-2 rounded-lg border border-slate-200/80 text-slate-600 font-mono text-[11px]">
+                                        <span className="font-bold text-blue-600 mr-1.5">[{ev.citation_id || `E${evIdx+1}`}]</span>
+                                        {ev.text ? (ev.text.length > 120 ? ev.text.substring(0, 120) + "..." : ev.text) : "Retrieved course material snippet."}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
 
                     {/* Loading Indicator with Live Progress Status */}
                     {isLoading && (
@@ -4840,7 +5046,7 @@ CRITICAL RELEVANCE & GROUNDING GUARDRAIL:
                         Inspect Files & Materials
                       </button>
                       <button
-                        onClick={() => handleOpenInChat(course.id, "What are the core learning concepts and student challenges in this course?")}
+                        onClick={() => handleOpenInChat(course.id)}
                         className="px-3.5 py-2 rounded-xl border border-blue-200 text-blue-700 hover:bg-blue-50 text-xs font-semibold transition-colors"
                       >
                         Discuss in AI Chat

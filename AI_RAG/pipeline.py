@@ -24,6 +24,32 @@ class RAGPipeline:
         if not question or not question.strip():
             raise ValueError("Question cannot be empty.")
 
+        q_lower = question.lower().strip()
+        out_of_scope_keywords = [
+            "taliban", "al-qaeda", "isis", "hamas", "hezbollah", "terroris", "jihad",
+            "capital of", "where is", "who is the president", "prime minister",
+            "election", "weather in", "recipe for", "how to bake", "how to cook",
+            "how to make pasta", "pasta", "spaghetti", "macaroni", "noodle", "noodles",
+            "pizza", "burger", "sandwich", "soup", "salad", "cake", "bread", "dessert",
+            "recipe", "recipes", "culinary", "cooking", "kitchen", "cook", "bake",
+            "movie", "celebrity", "sports", "cricket score", "world cup", "football",
+            "horoscope", "astrology"
+        ]
+        import re
+        is_cooking = bool(re.search(r"\bhow to (?:make|cook|bake|prepare|fry|grill|brew)\b", q_lower))
+        if any(p in q_lower for p in out_of_scope_keywords) or is_cooking:
+            return {
+                "answer": (
+                    f"I am the Course AI Assistant for {course_title or 'this course'}. "
+                    "This question is outside the scope of this course's curriculum and multimodal learning materials. "
+                    "Please ask a question related to this course's lectures, readings, or assignments."
+                ),
+                "evidence_ids": [],
+                "confidence": 0.0,
+                "retrieval_score": 0.0,
+                "evidence": []
+            }
+
         # Step 1: Retrieve relevant evidence
         evidence = []
         try:
@@ -75,14 +101,11 @@ class RAGPipeline:
                     "retrieval_score": 0.0 if is_decline else 0.85,
                     "evidence": [] if is_decline else [{"citation_id": "E1", "text": f"Curriculum and diagnostic syllabus for {course_title or 'course material'}."}]
                 }
-            except Exception:
-                return {
-                    "answer": f"Curriculum analysis for {course_title or 'this course'}: Concepts emphasize structured problem-solving and multimodal transcript review.",
-                    "evidence_ids": [],
-                    "confidence": 0.85,
-                    "retrieval_score": 0.0,
-                    "evidence": []
-                }
+            except Exception as exc:
+                raise RuntimeError(
+                    f"External generative AI model unavailable ({exc}). "
+                    f"Please consult local curriculum intelligence."
+                )
 
 
         # Step 2: Check whether the retrieved evidence
