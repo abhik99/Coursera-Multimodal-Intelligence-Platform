@@ -1,32 +1,54 @@
-from sentence_transformers import SentenceTransformer
-from pgvector.psycopg import register_vector
+import logging
 
-from preprocessing.common.db import get_db
-
+logger = logging.getLogger(__name__)
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 class Retriever:
     def __init__(self):
-        self.model = SentenceTransformer(MODEL_NAME)
+        self._model = None
+
+    def _get_model(self):
+        """Lazily initialize the embedding model with single-thread CPU constraints to prevent OOM."""
+        if self._model is None:
+            try:
+                try:
+                    import torch
+                    torch.set_num_threads(1)
+                except Exception:
+                    pass
+                from sentence_transformers import SentenceTransformer
+                self._model = SentenceTransformer(MODEL_NAME)
+            except Exception as exc:
+                logger.warning("Could not initialize SentenceTransformer (%s). Returning empty evidence.", exc)
+                self._model = None
+        return self._model
 
     def search(self, query: str, top_k: int = 5):
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")
 
-        # Convert user query into an embedding
-        query_embedding = self.model.encode(
-            query,
-            normalize_embeddings=True
-        )
+        model = self._get_model()
+        if model is None:
+            return []
 
-        with get_db() as conn:
-            register_vector(conn)
+        try:
+            # Convert user query into an embedding
+            query_embedding = model.encode(
+                query,
+                normalize_embeddings=True
+            )
 
-            with conn.cursor() as cur:
-                emb_list = query_embedding.tolist()
-                cur.execute(
+            from pgvector.psycopg import register_vector
+            from preprocessing.common.db import get_db
+
+            with get_db() as conn:
+                register_vector(conn)
+
+                with conn.cursor() as cur:
+                    emb_list = query_embedding.tolist()
+                    cur.execute(
                     """
                     (
                         SELECT
@@ -86,6 +108,9 @@ class Retriever:
             })
 
         return results
+        except Exception as exc:
+            logger.warning("Database vector retrieval failed (%s). Returning empty evidence.", exc)
+            return []
         # results = []
 
         # for row in rows:
