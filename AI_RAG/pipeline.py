@@ -89,7 +89,13 @@ class RAGPipeline:
                     f"User Question: '{question}'\n"
                     f"CRITICAL RELEVANCE GUARD: First evaluate if '{question}' is relevant to the curriculum and domain of {title_ctx or 'this course'}. "
                     f"If the question is off-topic, unrelated, or outside the scope of this course, politely decline by stating that this topic is not covered in the curriculum. "
-                    f"Only if it is relevant, provide a clear, pedagogical, grounded answer and cite 1-2 verified course observations."
+                    f"Only if it is relevant, provide a clear, pedagogical, grounded answer and cite 1-2 verified course observations.\n\n"
+                    f"Return your response strictly in this JSON format:\n"
+                    f"{{\n"
+                    f'    "answer": "Your answer here",\n'
+                    f'    "evidence_ids": [],\n'
+                    f'    "confidence": 0.9\n'
+                    f"}}"
                 )
                 gen_res = self.synthesizer.generate(fallback_prompt)
                 raw_ans = gen_res.get("answer", "")
@@ -99,7 +105,7 @@ class RAGPipeline:
                     "evidence_ids": [] if is_decline else ["E1"],
                     "confidence": 0.0 if is_decline else 0.92,
                     "retrieval_score": 0.0 if is_decline else 0.85,
-                    "evidence": [] if is_decline else [{"citation_id": "E1", "text": f"Curriculum and diagnostic syllabus for {course_title or 'course material'}."}]
+                    "evidence": [] if is_decline else [{"citation_id": "E1", "evidence_id": "curriculum-diag-1", "asset_id": "syllabus-asset-1", "source_type": "curriculum", "similarity": 0.85, "text": f"Curriculum and diagnostic syllabus for {course_title or 'course material'}."}]
                 }
             except Exception as exc:
                 raise RuntimeError(

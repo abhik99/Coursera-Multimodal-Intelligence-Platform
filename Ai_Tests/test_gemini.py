@@ -10,10 +10,12 @@
 # print("\nGemini response:")
 # print(response)
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 from google import genai
 
-MODEL_NAME = "gemini-3.6-flash"
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 
 api_key = os.getenv("GEMINI_API_KEY")

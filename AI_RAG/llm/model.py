@@ -6,7 +6,7 @@ from google.genai import types
 
 load_dotenv()
 
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 
 class GeminiModel:
@@ -32,8 +32,12 @@ class GeminiModel:
         if not prompt or not prompt.strip():
             raise ValueError("Prompt cannot be empty.")
 
-        # Attempt with primary model, then fallback to gemini-1.5-flash if needed
-        models_to_try = [MODEL_NAME, "gemini-1.5-flash", "gemini-2.0-flash"]
+        # Attempt with primary model, then fallback to current stable models
+        candidate_models = [MODEL_NAME, "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-3.8-flash"]
+        models_to_try = []
+        for m in candidate_models:
+            if m and m not in models_to_try:
+                models_to_try.append(m)
         last_error = None
 
         for model in models_to_try:

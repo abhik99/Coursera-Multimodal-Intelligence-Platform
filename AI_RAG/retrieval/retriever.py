@@ -95,19 +95,20 @@ class Retriever:
                 )
 
                 rows = cur.fetchall()
-        results = []
 
-        for index, row in enumerate(rows, start=1):
-            results.append({
-                "citation_id": f"E{index}",
-                "evidence_id": str(row[0]),
-                "text": row[1],
-                "asset_id": str(row[2]),
-                "source_type": str(row[3]),
-                "similarity": float(row[4])
-            })
+            results = []
 
-        return results
+            for index, row in enumerate(rows, start=1):
+                results.append({
+                    "citation_id": f"E{index}",
+                    "evidence_id": str(row[0]),
+                    "text": row[1],
+                    "asset_id": str(row[2]),
+                    "source_type": str(row[3]),
+                    "similarity": float(row[4])
+                })
+
+            return results
         except Exception as exc:
             logger.warning("Database vector retrieval failed (%s). Returning empty evidence.", exc)
             return []
