@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 // Default initial courses matching user screenshots and database
 const INITIAL_COURSES = [
@@ -5084,6 +5085,9 @@ CRITICAL RELEVANCE & GROUNDING GUARDRAIL:
           <span>{courseActionToast}</span>
         </div>
       )}
+
+      {/* Vercel Web Analytics */}
+      <Analytics />
 
     </div>
   );
